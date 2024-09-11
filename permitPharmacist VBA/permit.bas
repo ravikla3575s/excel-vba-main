@@ -4,17 +4,23 @@ Sub ExcelToWordWith8Formats_Mac()
     Dim PhoneNumberAndData As String
     Dim FormatChoice As String
     Dim TemplatePath As String
-    Dim storeData As Variant
-    Dim i As Long
+    Dim storeNames() As Variant ' 店舗名の配列
+    Dim storeData() As Variant ' 店舗のデータを格納する配列
+    Dim lastRow As Long
+    Dim i As Long, j As Long
+    Dim foundColumn As Long
+    Dim currentStore As String
     Dim WordApp As Object
     Dim WordDoc As Object
     Dim rng As Object
 
-    ' C19からC252の範囲を配列に格納
-    storeData = Sheets(1).Range("C19:C252").Value
+    ' シートの参照設定
+    Dim ws1 As Worksheet, ws2 As Worksheet
+    Set ws1 = Sheets(1) ' 店舗名リストがあるシート
+    Set ws2 = Sheets(2) ' 店舗データを検索するシート
 
-    ' フォーマット選択がC14にあると仮定
-    FormatChoice = Sheets(1).Range("C14").Value 
+    ' FormatChoiceはSheet(1)のB3セルに格納されていると仮定
+    FormatChoice = ws1.Range("B3").Value
 
     ' フォーマットの選択に基づいてWordテンプレートを分岐
     Select Case FormatChoice
@@ -46,6 +52,12 @@ Sub ExcelToWordWith8Formats_Mac()
         Exit Sub
     End If
 
+    ' 店舗名リストの最終行を取得（D列、空欄まで）
+    lastRow = ws1.Cells(ws1.Rows.Count, "D").End(xlUp).Row
+
+    ' 店舗名をD2から最終行まで配列に格納
+    storeNames = ws1.Range("D2:D" & lastRow).Value
+
     ' Wordアプリケーションを起動
     On Error Resume Next
     Set WordApp = GetObject(, "Word.Application")
@@ -68,19 +80,33 @@ Sub ExcelToWordWith8Formats_Mac()
     ' Wordアプリケーションを可視化
     WordApp.Visible = True
 
-    ' プレースホルダーを検索して置換する（Rangeオブジェクトを使用）
-    ' permitNumberAndDate の置換
-    Set rng = WordDoc.Content
-    rng.Find.Execute FindText:="<<permitNumberAndDate>>", ReplaceWith:=permitNumberAndDate, Replace:=2
+    ' 店舗名を1つずつ処理
+    For i = 1 To UBound(storeNames, 1)
+        currentStore = storeNames(i, 1) ' 現在の店舗名を取得
 
-    ' 顧客名の置換
-    rng.Find.Execute FindText:="<<CustomerName>>", ReplaceWith:="山田 太郎", Replace:=2
+        ' Sheet(2)の5行目を検索して店舗名を見つけた列番号を取得
+        On Error Resume Next ' エラー処理（見つからない場合）
+        foundColumn = 0
+        foundColumn = ws2.Rows(5).Find(What:=currentStore, LookIn:=xlValues, LookAt:=xlWhole).Column
+        On Error GoTo 0 ' エラー処理を解除
 
-    ' 住所の置換
-    rng.Find.Execute FindText:="<<Address>>", ReplaceWith:="東京都新宿区", Replace:=2
+        If foundColumn > 0 Then
+            ' 店舗名が見つかった場合、その列の6〜218行目を配列に格納
+            storeData = ws2.Range(ws2.Cells(6, foundColumn), ws2.Cells(218, foundColumn)).Value
 
-    ' 電話番号の置換
-    rng.Find.Execute FindText:="<<PhoneNumberAndData>>", ReplaceWith:="090-1234-5678", Replace:=2
+            ' storeData配列内のデータを確認（例としてイミディエイトウィンドウに出力）
+            For j = LBound(storeData, 1) To UBound(storeData, 1)
+                Debug.Print "店舗名: " & currentStore & " - 行 " & j + 5 & ": " & storeData(j, 1)
+            Next j
+
+            ' プレースホルダーの置換
+            Set rng = WordDoc.Content
+            rng.Find.Execute FindText:="<<permitNumberAndDate>>", ReplaceWith:=permitNumberAndDate, Replace:=2
+        Else
+            ' 店舗名が見つからない場合の処理
+            Debug.Print "店舗名 '" & currentStore & "' がSheet(2)の5行目に見つかりません。"
+        End If
+    Next i
 
     ' ドキュメントを指定したパスに保存
     Dim savePath As String

@@ -1,4 +1,4 @@
-Sub ExcelToWordWith8Formats_Mac()
+Sub ExcelToWordWith8Formats()
     Dim permitNumberAndDate As String
     Dim Address As String
     Dim PhoneNumberAndData As String
@@ -46,39 +46,11 @@ Sub ExcelToWordWith8Formats_Mac()
             Exit Sub
     End Select
 
-    ' テンプレートファイルが存在するか確認
-    If Dir(TemplatePath) = "" Then
-        MsgBox "テンプレートファイルが見つかりません。" & vbCrLf & TemplatePath
-        Exit Sub
-    End If
-
     ' 店舗名リストの最終行を取得（D列、空欄まで）
     lastRow = ws1.Cells(ws1.Rows.Count, "D").End(xlUp).Row
 
     ' 店舗名をD2から最終行まで配列に格納
     storeNames = ws1.Range("D2:D" & lastRow).Value
-
-    ' Wordアプリケーションを起動
-    On Error Resume Next
-    Set WordApp = GetObject(, "Word.Application")
-    On Error GoTo 0
-
-    If WordApp Is Nothing Then
-        Set WordApp = CreateObject("Word.Application")
-    End If
-
-    ' エラーチェック
-    If WordApp Is Nothing Then
-        MsgBox "Wordアプリケーションを起動できませんでした。"
-        Exit Sub
-    End If
-
-    ' Wordのテンプレートを開く
-    On Error GoTo ErrorHandler
-    Set WordDoc = WordApp.Documents.Open(TemplatePath)
-
-    ' Wordアプリケーションを可視化
-    WordApp.Visible = True
 
     ' 店舗名を1つずつ処理
     For i = 1 To UBound(storeNames, 1)
@@ -94,36 +66,58 @@ Sub ExcelToWordWith8Formats_Mac()
             ' 店舗名が見つかった場合、その列の6〜218行目を配列に格納
             storeData = ws2.Range(ws2.Cells(6, foundColumn), ws2.Cells(218, foundColumn)).Value
 
-            ' storeData配列内のデータを確認（例としてイミディエイトウィンドウに出力）
+            ' Wordアプリケーションを起動
+            On Error Resume Next
+            Set WordApp = GetObject(, "Word.Application")
+            On Error GoTo 0
+
+            If WordApp Is Nothing Then
+                Set WordApp = CreateObject("Word.Application")
+            End If
+
+            ' エラーチェック
+            If WordApp Is Nothing Then
+                MsgBox "Wordアプリケーションを起動できませんでした。"
+                Exit Sub
+            End If
+
+            ' Wordのテンプレートを開く
+            On Error GoTo ErrorHandler
+            Set WordDoc = WordApp.Documents.Open(TemplatePath)
+
+            ' Wordアプリケーションを可視化
+            WordApp.Visible = True
+
+            ' storeData配列内のデータをWordドキュメントに挿入
             For j = LBound(storeData, 1) To UBound(storeData, 1)
-                Debug.Print "店舗名: " & currentStore & " - 行 " & j + 5 & ": " & storeData(j, 1)
+                ' ここでWordの特定の場所にデータを挿入するコードを記述
+                ' 例として、プレースホルダーを使って置換する処理を行う
+                Set rng = WordDoc.Content
+                rng.Find.Execute FindText:="<<DataPlaceHolder>>", ReplaceWith:=storeData(j, 1), Replace:=2
             Next j
 
-            ' プレースホルダーの置換
-            Set rng = WordDoc.Content
-            rng.Find.Execute FindText:="<<permitNumberAndDate>>", ReplaceWith:=permitNumberAndDate, Replace:=2
+            ' 店舗ごとにファイルを保存
+            Dim savePath As String
+            savePath = "Macintosh HD:Users:yourusername:path:to:" & currentStore & "_output_document.docx"
+
+            ' ファイル形式を指定して保存（.docx形式）
+            WordDoc.SaveAs2 FileName:=savePath, FileFormat:=12 ' FileFormat:=12は.docx形式
+
+            ' ドキュメントを閉じる
+            WordDoc.Close
+            Set WordDoc = Nothing
+
+            ' 次の店舗に移る前にWordテンプレートを閉じて再度開くようにする
+            WordApp.Quit
+            Set WordApp = Nothing
+
         Else
             ' 店舗名が見つからない場合の処理
             Debug.Print "店舗名 '" & currentStore & "' がSheet(2)の5行目に見つかりません。"
         End If
     Next i
 
-    ' ドキュメントを指定したパスに保存
-    Dim savePath As String
-    savePath = "Macintosh HD:Users:yourusername:path:to:output_document.docx"
-    
-    ' ファイル形式を指定して保存（.docx形式）
-    WordDoc.SaveAs2 FileName:=savePath, FileFormat:=12 ' FileFormat:=12は.docx形式
-
-    ' ドキュメントを閉じる
-    WordDoc.Close
-    WordApp.Quit
-
-    ' オブジェクトの解放
-    Set WordDoc = Nothing
-    Set WordApp = Nothing
-
-    MsgBox "処理が完了しました。ファイルは " & savePath & " に保存されました。"
+    MsgBox "すべての店舗情報の処理が完了しました。"
     Exit Sub
 
 ErrorHandler:

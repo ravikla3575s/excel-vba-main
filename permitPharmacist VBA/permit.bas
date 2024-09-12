@@ -14,6 +14,8 @@ Sub ExcelToWordWith8Formats()
     Dim WordApp As Object
     Dim WordDoc As Object
     Dim rng As Object
+
+    ' 新たに追加した変数
     Dim submissionDate As String
     Dim dateOfChange As String
     Dim savePath As String

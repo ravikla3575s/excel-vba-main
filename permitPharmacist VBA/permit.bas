@@ -1,4 +1,4 @@
-Sub ExcelToWordWith8Formats()
+Sub ExcelToWordWithFormats()
     Dim permitNumberAndDate As String
     Dim Address As String
     Dim PhoneNumber As String ' 電話番号変数の追加

@@ -232,3 +232,30 @@ Sub CloseAllWordProcesses()
     
     MsgBox "すべてのWordドキュメントが閉じられました。"
 End Sub
+Sub CloseAllWordProcesses()
+    Dim WordApp As Object
+    Dim Doc As Object
+    
+    On Error Resume Next ' エラーが発生しても続行
+    
+    ' Wordアプリケーションを取得
+    Set WordApp = GetObject(, "Word.Application")
+    
+    ' Wordアプリケーションが存在する場合
+    If Not WordApp Is Nothing Then
+        ' 開いているすべてのドキュメントを閉じる
+        For Each Doc In WordApp.Documents
+            Doc.Close SaveChanges:=False ' 保存せずに閉じる
+        Next Doc
+        
+        ' Wordアプリケーションを終了
+        WordApp.Quit
+        Set WordApp = Nothing
+    Else
+        MsgBox "開いているWordプロセスはありません。"
+    End If
+    
+    On Error GoTo 0 ' エラーハンドリングを元に戻す
+    
+    MsgBox "すべてのWordドキュメントが閉じられました。"
+End Sub

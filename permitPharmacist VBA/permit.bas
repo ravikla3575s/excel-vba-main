@@ -1,4 +1,4 @@
-Sub ExcelToWordWithFormats()
+Sub ExcelToWordWith8Formats()
     Dim permitNumberAndDate As String
     Dim Address As String
     Dim PhoneNumber As String ' 電話番号変数の追加
@@ -83,6 +83,7 @@ Sub ExcelToWordWithFormats()
     End If
 
     ' 店舗名を1つずつ処理
+    On Error GoTo ErrorHandler ' エラーハンドリング設定
     For i = 1 To UBound(storeNames, 1)
         currentStore = storeNames(i, 1) ' 現在の店舗名を取得
 
@@ -93,7 +94,7 @@ Sub ExcelToWordWithFormats()
         On Error GoTo 0 ' エラー処理を解除
 
         If foundColumn > 0 Then
-            ' 店舗名が見つかった場合、その列の6?218行目を配列に格納
+            ' 店舗名が見つかった場合、その列の6〜218行目を配列に格納
             storeData = ws2.Range(ws2.Cells(6, foundColumn), ws2.Cells(218, foundColumn)).Value
 
             ' jurisdictionalの値を確認
@@ -198,9 +199,36 @@ Sub ExcelToWordWithFormats()
     MsgBox "すべての店舗情報の処理が完了しました。"
     Exit Sub
 
-ErrorHandlerLoop:
+ErrorHandler:
     MsgBox "エラーが発生しました。エラー内容: " & Err.Description
-    If Not WordDoc Is Nothing Then WordDoc.Close SaveChanges:=False
+    Call CloseAllWordProcesses ' エラー時にWordを全て閉じる
     Resume Next
 End Sub
 
+Sub CloseAllWordProcesses()
+    Dim WordApp As Object
+    Dim Doc As Object
+    
+    On Error Resume Next ' エラーが発生しても続行
+    
+    ' Wordアプリケーションを取得
+    Set WordApp = GetObject(, "Word.Application")
+    
+    ' Wordアプリケーションが存在する場合
+    If Not WordApp Is Nothing Then
+        ' 開いているすべてのドキュメントを閉じる
+        For Each Doc In WordApp.Documents
+            Doc.Close SaveChanges:=False ' 保存せずに閉じる
+        Next Doc
+        
+        ' Wordアプリケーションを終了
+        WordApp.Quit
+        Set WordApp = Nothing
+    Else
+        MsgBox "開いているWordプロセスはありません。"
+    End If
+    
+    On Error GoTo 0 ' エラーハンドリングを元に戻す
+    
+    MsgBox "すべてのWordドキュメントが閉じられました。"
+End Sub

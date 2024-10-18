@@ -35,3 +35,48 @@ Sub SearchDatesAndInsertValues()
     
     MsgBox "該当する値の検索と挿入が完了しました。"
 End Sub
+Sub SearchStringsAndDisplayMismatch()
+
+    Dim ws1 As Worksheet, ws2 As Worksheet
+    Dim searchRange As Range, cell As Range
+    Dim searchValue As String
+    Dim foundCell As Range
+    Dim msg As String
+    Dim lastCol As Long
+    Dim lastRow As Long
+
+    ' シートを設定
+    Set ws1 = ThisWorkbook.Sheets("Sheet1")
+    Set ws2 = ThisWorkbook.Sheets("Sheet2")
+
+    ' シート2の6行目の最終列を取得
+    lastCol = ws2.Cells(6, ws2.Columns.Count).End(xlToLeft).Column
+
+    ' シート1のD列5行目以降の範囲を設定
+    lastRow = ws1.Cells(ws1.Rows.Count, "D").End(xlUp).Row
+    Set searchRange = ws1.Range("D5:D" & lastRow)
+
+    ' 一致しない文字列を格納するメッセージ用変数
+    msg = ""
+
+    ' シート2の6行目を順に検索
+    For col = 3 To lastCol
+        searchValue = ws2.Cells(6, col).Value
+
+        ' シート1のD列で文字列を検索
+        Set foundCell = searchRange.Find(What:=searchValue, LookIn:=xlValues, LookAt:=xlWhole)
+
+        ' 一致しなかった場合、メッセージボックスに表示
+        If foundCell Is Nothing Then
+            msg = msg & searchValue & vbNewLine
+        End If
+    Next col
+
+    ' 一致しなかった文字列を表示
+    If msg <> "" Then
+        MsgBox "一致しなかった文字列: " & vbNewLine & msg
+    Else
+        MsgBox "全ての文字列が一致しました。"
+    End If
+
+End Sub

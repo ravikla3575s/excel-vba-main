@@ -1,0 +1,37 @@
+Sub SearchDatesAndInsertValues()
+    Dim ws1 As Worksheet, ws2 As Worksheet
+    Dim currentYear As Integer
+    Dim searchDate As Date
+    Dim i As Integer
+    Dim insertRow As Long
+    Dim targetValue As Variant
+    
+    ' シートの参照設定
+    Set ws1 = ThisWorkbook.Sheets(1) ' Sheet(1)
+    Set ws2 = ThisWorkbook.Sheets(2) ' Sheet(2)
+    
+    ' 現在の年を取得
+    currentYear = Year(Date)
+    
+    ' 値を挿入する開始行（Sheet(1)のCells(2, 4)の位置を基準）
+    insertRow = ws1.Cells(2, 4).Row
+    
+    ' Sheet(2)のCells(43, 3)からCells(43, 36)を検索
+    For i = 3 To 36
+        searchDate = ws2.Cells(43, i).Value ' 43行目のi列の値を取得
+        
+        ' 年が現在の年と同じかどうかを確認
+        If Year(searchDate) = currentYear Then
+            ' 年が一致する場合、同じ列の5行目の値を取得
+            targetValue = ws2.Cells(5, i).Value
+            
+            ' Sheet(1)の挿入行にその値を入力
+            ws1.Cells(insertRow, 4).Value = targetValue
+            
+            ' 次の行に値を挿入するため、挿入行を1つ下げる
+            insertRow = insertRow + 1
+        End If
+    Next i
+    
+    MsgBox "該当する値の検索と挿入が完了しました。"
+End Sub

@@ -130,7 +130,35 @@ Sub ImportCSVAndTransferSpecificData()
             rowNum = rowNum + 1
         End If
     Next i
+    ' 新しいブックを作成し、調剤請求書シートのみをコピー
+    Set newWb = Workbooks.Add
+    ws.Copy Before:=newWb.Sheets(1)
+    
+    ' 元のワークブックに戻す
+    ThisWorkbook.Activate
+    
+    ' フォルダ選択ダイアログを表示
+    Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+    fDialog.Title = "保存するフォルダを選択してください"
+    
+    If fDialog.Show = -1 Then
+        folderPath = fDialog.SelectedItems(1)
+    Else
+        MsgBox "保存フォルダが選択されませんでした。処理を中止します。"
+        Exit Sub
+    End If
+    
+    ' 保存先のファイル名を設定
+    saveFileName = "tyouzai_excel.xlsx"
+    savePath = folderPath & "\" & saveFileName
+    
+    ' 新しいファイルとして保存
+    newWb.SaveAs Filename:=savePath, FileFormat:=xlOpenXMLWorkbook
+    newWb.Close False
+    
+    ' 呼び出し元シート2のD11:M500をクリア
+    callingWs.Range("D11:M500").ClearContents
     
     ' 完了メッセージ
-    MsgBox "CSVデータの読み込みと転記が完了しました。", vbInformation
+    MsgBox "データの転記と保存が完了しました。保存場所: " & savePath, vbInformation
 End Sub

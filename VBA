@@ -80,3 +80,57 @@ Sub SearchStringsAndDisplayMismatch()
     End If
 
 End Sub
+Sub ImportCSVAndTransferSpecificData()
+    Dim ws As Worksheet
+    Dim csvWs As Worksheet
+    Dim csvFilePath As String
+    Dim csvData As Variant
+    Dim i As Long
+    Dim rowNum As Long
+    Dim lastRow As Long
+    
+    ' CSVファイルのパスを指定
+    csvFilePath = Application.GetOpenFilename("CSV Files (*.csv), *.csv", , "CSVファイルを選択")
+    
+    If csvFilePath = "False" Then
+        MsgBox "CSVファイルが選択されませんでした。"
+        Exit Sub
+    End If
+    
+    ' CSVファイルを開く
+    Workbooks.Open csvFilePath
+    Set csvWs = ActiveSheet
+    
+    ' データの最終行を取得
+    lastRow = csvWs.Cells(csvWs.Rows.Count, 1).End(xlUp).Row
+    
+    ' データを配列に読み込む
+    csvData = csvWs.Range("A2:BR" & lastRow).Value ' 1行目は無視し、2行目から読み込む
+    
+    ' CSVファイルを閉じる
+    Workbooks(csvWs.Parent.Name).Close False
+    
+    ' 調剤請求書（旭川市）のシートを指定
+    Set ws = ThisWorkbook.Sheets("調剤請求書（旭川市）")
+    
+    ' 転記開始行は11行目
+    rowNum = 11
+    
+    ' CSVデータをシートに転記
+    For i = 1 To UBound(csvData, 1) ' 1行目（CSVの2行目）から読み込む
+        If csvData(i, 1) <> "" Then ' 空でない行を処理
+            ws.Cells(rowNum, 2).Value = csvData(i, 10) ' J列: 患者氏名
+            ws.Cells(rowNum, 3).Value = csvData(i, 11) ' K列: 患者カナ氏名
+            ws.Cells(rowNum, 4).Value = csvData(i, 12) ' L列: 生年月日
+            ws.Cells(rowNum, 5).Value = csvData(i, 17) ' Q列: 公費
+            ws.Cells(rowNum, 6).Value = csvData(i, 51) ' AY列: 生保受給者番号
+            ws.Cells(rowNum, 7).Value = csvData(i, 38) ' AL列: 患者住所
+            ws.Cells(rowNum, 8).Value = csvData(i, 34) ' AH列: 処方元の医療機関名
+            ws.Cells(rowNum, 9).Value = csvData(i, 65) ' BM列: 処方元の医療機関コード
+            rowNum = rowNum + 1
+        End If
+    Next i
+    
+    ' 完了メッセージ
+    MsgBox "CSVデータの読み込みと転記が完了しました。", vbInformation
+End Sub

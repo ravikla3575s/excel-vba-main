@@ -2,12 +2,6 @@ Sub ProcessMultipleCSVFiles()
     Dim ws As Worksheet
     Dim csvSheet As Worksheet
     Dim lastRow As Long
-    Dim searchMonth As String
-    Dim i As Long, j As Long
-    Dim csvMonth As String
-    Dim normalStartCol As Integer
-    Dim reClaimStartCol As Integer
-    Dim found As Boolean
     Dim folderPath As String
     Dim csvFile As String
     Dim wb As Workbook
@@ -16,17 +10,6 @@ Sub ProcessMultipleCSVFiles()
     Set ws = ThisWorkbook.Sheets(1)
     
     folderPath = ThisWorkbook.Path & Application.PathSeparator
-    
-    ' フォルダ選択ダイアログを表示
-'    With Application.FileDialog(msoFileDialogFolderPicker)
-'        .Title = "CSVファイルが保存されているフォルダを選択してください"
-'        If .Show = -1 Then
-'            folderPath = .SelectedItems(1) & "\"
-'        Else
-'            MsgBox "フォルダが選択されませんでした。"
-'            Exit Sub
-'        End If
-'    End With
     
     ' フォルダ内のすべてのCSVファイルを処理
     csvFile = Dir(folderPath & "*.csv") ' フォルダ内のCSVファイルを取得
@@ -113,29 +96,107 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
             Exit For ' データを転記したらループを抜ける
         End If
     Next i
-            ' 該当する月が見つからなかった場合のエラーメッセージ
-        If Not found Then
-            MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
-        End If
+    
+    ' 該当する月が見つからなかった場合のエラーメッセージ
+    If Not found Then
+        MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
+    End If
 End Sub
 
 ' ===== 振込額明細書の処理 =====
 Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     Dim i As Long
     Dim paymentAmount As Double
+    Dim totalAmount As Double
+    Dim paymentAgencyCode As String
+    Dim depositColumn As Integer
+    Dim returnManagementSheet As Worksheet
+    Dim nextEmptyRow As Long
+    Dim diagnosisDate As String
+    Dim requestPoints As Double
+    Dim finalPoints As Double
+    Dim difference As Double
+    Dim status As String
     
-    ' 振込額明細書は82行目の振込額を取得
-    paymentAmount = csvSheet.Cells(82, 1).Value
+    ' "返戻管理"シートを取得
+    Set returnManagementSheet = ThisWorkbook.Sheets("返戻管理")
     
-    ' 振込額をシート1の指定されたセルに転記（例: B20に転記する）
-    ws.Cells(20, 2).Value = paymentAmount
+    ' 次にデータを転記する行を取得（返戻管理シートの最終行+1）
+    nextEmptyRow = returnManagementSheet.Cells(returnManagementSheet.Rows.Count, "A").End(xlUp).Row + 1
+    
+    ' 支払機関コードを取得（例：7桁目の値を使用）
+    paymentAgencyCode = Mid(csvSheet.Name, 7, 1) ' ファイル名から7桁目を取得
+    
+    ' 支払機関コードに応じて転記先の列を設定
+    Select Case paymentAgencyCode
+        Case "1"
+            depositColumn = 5 ' 支払機関コードが1の場合、5列目に転記
+        Case "2"
+            depositColumn = 6 ' 支払機関コードが2の場合、6列目に転記
+        Case "3"
+            depositColumn = 8 ' 支払機関コードが3の場合、8列目に転記
+        Case Else
+            MsgBox "不明な支払機関コードです: " & paymentAgencyCode, vbExclamation, "エラー"
+            Exit Sub
+    End Select
+    
+    ' 診療年月を取得（例: Cells(1,2)の5桁の値）
+    diagnosisDate = csvSheet.Cells(1, 2).Value
+    
+    ' 82列目の合計額を計算し、空欄を無視
+    totalAmount = 0
+    For i = 3 To csvSheet.Cells(csvSheet.Rows.Count, "A").End(xlUp).Row
+        If IsNumeric(csvSheet.Cells(i, 82).Value) Then
+            totalAmount = totalAmount + csvSheet.Cells(i, 82).Value
+        Else
+            ' 82列目が空欄の場合、返戻管理シートに転記
+            returnManagementSheet.Cells(nextEmptyRow, 1).Value = paymentAgencyCode ' 支払機関
+            returnManagementSheet.Cells(nextEmptyRow, 2).Value = diagnosisDate ' 診療年月
+            returnManagementSheet.Cells(nextEmptyRow, 3).Value = csvSheet.Cells(i, 14).Value ' 患者名
+            returnManagementSheet.Cells(nextEmptyRow, 4).Value = "振込なし" ' 返戻日
+            returnManagementSheet.Cells(nextEmptyRow, 5).Value = csvSheet.Cells(i, 22).Value ' 請求時点数
+            returnManagementSheet.Cells(nextEmptyRow, 6).Value = csvSheet.Cells(i, 23).Value ' 返戻後再請求時点数
+            returnManagementSheet.Cells(nextEmptyRow, 7).Value = 0 ' 振込額（なし）
+            returnManagementSheet.Cells(nextEmptyRow, 8).Value = csvSheet.Cells(i, 22).Value ' 差額（請求時点数）
+            returnManagementSheet.Cells(nextEmptyRow, 9).Value = "返戻" ' 請求状況
+            nextEmptyRow = nextEmptyRow + 1
+        End If
+        
+        ' 22列目と23列目の差異をチェック
+        If IsNumeric(csvSheet.Cells(i, 22).Value) And IsNumeric(csvSheet.Cells(i, 23).Value) Then
+            requestPoints = csvSheet.Cells(i, 22).Value
+            finalPoints = csvSheet.Cells(i, 23).Value
+            difference = requestPoints - finalPoints
+            
+            If difference <> 0 Then
+                ' 差異がある場合、返戻管理シートに転記
+                returnManagementSheet.Cells(nextEmptyRow, 1).Value = paymentAgencyCode ' 支払機関
+                returnManagementSheet.Cells(nextEmptyRow, 2).Value = diagnosisDate ' 診療年月
+                returnManagementSheet.Cells(nextEmptyRow, 3).Value = csvSheet.Cells(i, 14).Value ' 患者名
+                returnManagementSheet.Cells(nextEmptyRow, 4).Value = Now ' 返戻日
+                returnManagementSheet.Cells(nextEmptyRow, 5).Value = requestPoints ' 請求時点数
+                returnManagementSheet.Cells(nextEmptyRow, 6).Value = finalPoints ' 返戻後再請求時点数
+                returnManagementSheet.Cells(nextEmptyRow, 7).Value = csvSheet.Cells(i, 82).Value ' 振込額
+                returnManagementSheet.Cells(nextEmptyRow, 8).Value = difference ' 請求振込差額
+                returnManagementSheet.Cells(nextEmptyRow, 9).Value = "差異あり" ' 請求状況
+                nextEmptyRow = nextEmptyRow + 1
+            End If
+        End If
+    Next i
+    
+    ' 合計額を指定されたセルに転記
+    ws.Cells(15, depositColumn).Value = totalAmount
 End Sub
 
 ' ===== 調剤報酬明細書の処理 =====
 Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
     Dim referenceAmount As Double
+    Dim searchMonth As String
+    Dim i As Long, j As Long
+    Dim csvMonth As String
+    Dim found As Boolean
     
-        ' シート1のA5からA16の各月のラベルを検索
+    ' シート1のA5からA16の各月のラベルを検索
     For i = 5 To 16 ' A5からA16
         searchMonth = ws.Cells(i, 1).Value ' A列の各月のラベルを取得
         
@@ -160,11 +221,11 @@ Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
             Exit For ' データを転記したらループを抜ける
         End If
     Next i
-            ' 該当する月が見つからなかった場合のエラーメッセージ
-        If Not found Then
-            MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
-        End If
-
+    
+    ' 該当する月が見つからなかった場合のエラーメッセージ
+    If Not found Then
+        MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
+    End If
 End Sub
 
 ' ===== 全角数字を半角数字に変換する関数 =====

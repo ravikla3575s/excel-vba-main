@@ -1,4 +1,4 @@
-Sub ImportCSVAndTransferDataAndSaveWithKanaFix()
+Sub ImportCSVAndTransferDataAndSaveWithKanaFixAndAddressCheck()
     Dim ws As Worksheet
     Dim csvWs As Worksheet
     Dim newWb As Workbook
@@ -12,7 +12,7 @@ Sub ImportCSVAndTransferDataAndSaveWithKanaFix()
     Dim savePath As String
     Dim fDialog As FileDialog
     Dim callingWs As Worksheet
-    Dim tempData As String
+    Dim tempAddress As String
     
     ' 呼び出し元のシート2を設定
     Set callingWs = ThisWorkbook.Sheets(2)
@@ -47,17 +47,37 @@ Sub ImportCSVAndTransferDataAndSaveWithKanaFix()
     ' CSVデータをシートに転記
     For i = 1 To UBound(csvData, 1) ' 1行目（CSVの2行目）から読み込む
         If csvData(i, 1) <> "" Then ' 空でない行を処理
+            ' 患者の住所を取得して「旭川市」が含まれているか確認
+            tempAddress = FixKanaAndTrim(csvData(i, 34)) ' AL列: 患者住所
+            
+            ' 住所に「旭川市」が含まれていない場合はスキップ
+            If InStr(tempAddress, "旭川市") = 0 Then
+                ' 住所に「旭川市」が含まれていない場合は次の患者に進む
+                GoTo NextPatient
+            End If
+            
             ' 各データを変換処理（全角変換、シングルクォートとスペースの削除）
-            ws.Cells(rowNum, 2).Value = FixKanaAndTrim(csvData(i, 10)) ' J列: 患者氏名
-            ws.Cells(rowNum, 3).Value = FixKanaAndTrim(csvData(i, 11)) ' K列: 患者カナ氏名
-            ws.Cells(rowNum, 4).Value = FixKanaAndTrim(csvData(i, 12)) ' L列: 生年月日
-            ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 17)) ' Q列: 公費
-            ws.Cells(rowNum, 6).Value = FixKanaAndTrim(csvData(i, 51)) ' AY列: 生保受給者番号
-            ws.Cells(rowNum, 7).Value = FixKanaAndTrim(csvData(i, 38)) ' AL列: 患者住所
-            ws.Cells(rowNum, 8).Value = FixKanaAndTrim(csvData(i, 34)) ' AH列: 処方元の医療機関名
-            ws.Cells(rowNum, 9).Value = FixKanaAndTrim(csvData(i, 65)) ' BM列: 処方元の医療機関コード
+            ws.Cells(rowNum, 2).Value = FixKanaAndTrim(csvData(i, 10)) ' 患者氏名
+            ws.Cells(rowNum, 3).Value = FixKanaAndTrim(csvData(i, 11)) ' 患者カナ氏名
+            ws.Cells(rowNum, 4).Value = tempAddress ' 患者住所
+            
+            If FixKanaAndTrim(csvData(i, 65)) <> "'（なし） （なし） （なし）'" Then
+                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 65)) ' 月初調剤年月日
+            Else
+                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 66))
+            End If
+            
+            ws.Cells(rowNum, 6).Value = FixKanaAndTrim(csvData(i, 51)) ' 生保受給者番号
+            ws.Cells(rowNum, 7).Value = FixKanaAndTrim(csvData(i, 10)) ' 薬局コード
+            ws.Cells(rowNum, 8).Value = FixKanaAndTrim(csvData(i, 11)) ' 診療報酬明細書コード
+            ws.Cells(rowNum, 9).Value = FixKanaAndTrim(csvData(i, 12)) ' 医療機関コード
+            ws.Cells(rowNum, 10).Value = FixKanaAndTrim(csvData(i, 57)) ' 保険者番号
+            
+            ' 行番号を進める
             rowNum = rowNum + 1
         End If
+        
+NextPatient:
     Next i
     
     ' 新しいブックを作成し、調剤請求書シートのみをコピー

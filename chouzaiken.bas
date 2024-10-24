@@ -48,7 +48,7 @@ Sub ImportCSVAndTransferDataAndSaveWithKanaFixAndAddressCheck()
     For i = 1 To UBound(csvData, 1) ' 1行目（CSVの2行目）から読み込む
         If csvData(i, 1) <> "" Then ' 空でない行を処理
             ' 患者の住所を取得して「旭川市」が含まれているか確認
-            tempAddress = FixKanaAndTrim(csvData(i, 34)) ' AL列: 患者住所
+            tempAddress = FixKanaAndTrim(csvData(i, 38)) ' AL列: 患者住所
             
             ' 住所に「旭川市」が含まれていない場合はスキップ
             If InStr(tempAddress, "旭川市") = 0 Then
@@ -59,10 +59,10 @@ Sub ImportCSVAndTransferDataAndSaveWithKanaFixAndAddressCheck()
             ' 各データを変換処理（全角変換、シングルクォートとスペースの削除）
             ws.Cells(rowNum, 2).Value = FixKanaAndTrim(csvData(i, 10)) ' 患者氏名
             ws.Cells(rowNum, 3).Value = FixKanaAndTrim(csvData(i, 11)) ' 患者カナ氏名
-            ws.Cells(rowNum, 4).Value = tempAddress ' 患者住所
+            ws.Cells(rowNum, 4).Value = FixKanaAndTrim(csvData(i, 34))
             
-            If FixKanaAndTrim(csvData(i, 65)) <> "'（なし） （なし） （なし）'" Then
-                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 65)) ' 月初調剤年月日
+            If csvData(i, 65) <> "'（なし） （なし） （なし）'" Then
+                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 65)) 
             Else
                 ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 66))
             End If
@@ -118,6 +118,8 @@ Function FixKanaAndTrim(inputStr As String) As String
     Dim result As String
     result = Application.WorksheetFunction.Substitute(inputStr, "'", "") ' シングルクォートを削除
     result = Application.WorksheetFunction.Substitute(result, " ", "") ' 半角スペースを削除
+    result = Application.WorksheetFunction.Substitute(result, "(", "/") 
+    result = Application.WorksheetFunction.Substitute(result, ")", "") ' 半角スペースを削除
     result = StrConv(result, vbWide) ' 半角カナを全角に変換
     FixKanaAndTrim = result
 End Function

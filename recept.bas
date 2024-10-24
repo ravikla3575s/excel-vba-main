@@ -15,16 +15,18 @@ Sub ProcessMultipleCSVFiles()
     ' シート1（転記先のシート）
     Set ws = ThisWorkbook.Sheets(1)
     
+    folderPath = ThisWorkbook.Path & Application.PathSeparator
+    
     ' フォルダ選択ダイアログを表示
-    With Application.FileDialog(msoFileDialogFolderPicker)
-        .Title = "CSVファイルが保存されているフォルダを選択してください"
-        If .Show = -1 Then
-            folderPath = .SelectedItems(1) & "\"
-        Else
-            MsgBox "フォルダが選択されませんでした。"
-            Exit Sub
-        End If
-    End With
+'    With Application.FileDialog(msoFileDialogFolderPicker)
+'        .Title = "CSVファイルが保存されているフォルダを選択してください"
+'        If .Show = -1 Then
+'            folderPath = .SelectedItems(1) & "\"
+'        Else
+'            MsgBox "フォルダが選択されませんでした。"
+'            Exit Sub
+'        End If
+'    End With
     
     ' フォルダ内のすべてのCSVファイルを処理
     csvFile = Dir(folderPath & "*.csv") ' フォルダ内のCSVファイルを取得
@@ -57,8 +59,8 @@ End Sub
 
 ' ===== 判定関数 =====
 Function IsBillingConfirmation(csvSheet As Worksheet) As Boolean
-    ' 請求確定表かどうかを判定する（Cells(1,6)が'請求確定表'、年月日が'令和X年X月処理分'）
-    IsBillingConfirmation = (csvSheet.Cells(1, 6).Value Like "'請求確定表'") 
+    ' 請求確定表かどうかを判定する（Cells(1,7)が'請求確定表'）
+    IsBillingConfirmation = (csvSheet.Cells(1, 7).Value Like "*請求確定表*")
 End Function
 
 Function IsPaymentDetails(csvFileName As String) As Boolean
@@ -85,13 +87,14 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
     lastRow = csvSheet.Cells(csvSheet.Rows.Count, "A").End(xlUp).Row
     
     ' シート1のA5からA16の各月のラベルを検索
-    For i = 5 To 16 Step 2 ' A5からA16まで、2行セットで検索するのでStep 2に設定
+    For i = 5 To 16 ' A5からA16
         searchMonth = ws.Cells(i, 1).Value ' A列の各月のラベルを取得
         
         found = False ' 初期状態では見つかっていない
         
         ' CSVシートの該当するデータを検索
         csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "") ' 'を削除
+        csvMonth = Replace(csvMonth, " ", "") ' 半角スペースを削除
         csvMonth = ConvertZenkakuToHankaku(csvMonth) ' 全角数字を半角に変換
         
         ' 一致するか比較
@@ -109,12 +112,11 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
             
             Exit For ' データを転記したらループを抜ける
         End If
-        
-        ' 該当する月が見つからなかった場合のエラーメッセージ
-        If Not found Then
-            MsgBox "対象年月日が見つかりません: " & searchMonth, vbExclamation, "エラー"
-        End If
     Next i
+            ' 該当する月が見つからなかった場合のエラーメッセージ
+        If Not found Then
+            MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
+        End If
 End Sub
 
 ' ===== 振込額明細書の処理 =====
@@ -133,11 +135,36 @@ End Sub
 Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
     Dim referenceAmount As Double
     
-    ' 調剤報酬明細書は1行目の33列目の振込参考金額を取得
-    referenceAmount = csvSheet.Cells(1, 33).Value
-    
-    ' 振込参考金額をシート1の指定されたセルに転記（例: B25に転記する）
-    ws.Cells(25, 2).Value = referenceAmount
+        ' シート1のA5からA16の各月のラベルを検索
+    For i = 5 To 16 ' A5からA16
+        searchMonth = ws.Cells(i, 1).Value ' A列の各月のラベルを取得
+        
+        found = False ' 初期状態では見つかっていない
+        
+        ' CSVシートの該当するデータを検索
+        csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "") ' 'を削除
+        csvMonth = ConvertZenkakuToHankaku(csvMonth) ' 全角数字を半角に変換
+        csvMonth = Format(Format(csvMonth, "@@@@/@@/@@"), "ggge年m月処理分") ' 令和◯年◯月処理分
+        
+        ' 一致するか比較
+        If csvMonth = searchMonth Then
+            ' 一致した場合にデータを転記
+            found = True ' 見つかったことを示す
+            
+            ' 調剤報酬明細書は1行目の33列目の振込参考金額を取得
+            referenceAmount = csvSheet.Cells(1, 33).Value
+            
+            ' 振込参考金額をシート1の指定されたセルに転記（例: B25に転記する）
+            ws.Cells(i, 2).Value = referenceAmount
+            
+            Exit For ' データを転記したらループを抜ける
+        End If
+    Next i
+            ' 該当する月が見つからなかった場合のエラーメッセージ
+        If Not found Then
+            MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
+        End If
+
 End Sub
 
 ' ===== 全角数字を半角数字に変換する関数 =====

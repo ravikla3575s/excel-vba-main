@@ -114,7 +114,7 @@ NextPatient:
 End Sub
 
 ' 半角カナを全角に変換し、シングルクォートと半角スペースを削除する関数
-Function FixKanaAndTrim(inputStr As String) As String
+Function FixKanaAndTrim(inputStr As Variant) As String
     Dim result As String
     result = Application.WorksheetFunction.Substitute(inputStr, "'", "") ' シングルクォートを削除
     result = Application.WorksheetFunction.Substitute(result, " ", "") ' 半角スペースを削除

@@ -58,7 +58,7 @@ End Sub
 ' ===== 判定関数 =====
 Function IsBillingConfirmation(csvSheet As Worksheet) As Boolean
     ' 請求確定表かどうかを判定する（Cells(1,6)が'請求確定表'、年月日が'令和X年X月処理分'）
-    IsBillingConfirmation = (csvSheet.Cells(1, 6).Value Like "*請求確定表*") And (csvSheet.Cells(1, 5).Value Like "令和*年*月処理分")
+    IsBillingConfirmation = (csvSheet.Cells(1, 6).Value Like "'請求確定表'") 
 End Function
 
 Function IsPaymentDetails(csvFileName As String) As Boolean
@@ -105,7 +105,7 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
             
             ' 再請求分：O列から横方向に転記（縦→横に変換）
             reClaimStartCol = 15 ' O列
-            ws.Cells(i + 1, reClaimStartCol).Resize(1, 7).Value = WorksheetFunction.Transpose(csvSheet.Cells(12, 11).Resize(7, 1).Value)
+            ws.Cells(i, reClaimStartCol).Resize(1, 7).Value = WorksheetFunction.Transpose(csvSheet.Cells(12, 11).Resize(7, 1).Value)
             
             Exit For ' データを転記したらループを抜ける
         End If

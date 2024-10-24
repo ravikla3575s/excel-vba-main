@@ -57,21 +57,21 @@ Sub ImportCSVAndTransferDataAndSaveWithKanaFixAndAddressCheck()
             End If
             
             ' 各データを変換処理（全角変換、シングルクォートとスペースの削除）
-            ws.Cells(rowNum, 2).Value = FixKanaAndTrim(csvData(i, 10)) ' 患者氏名
-            ws.Cells(rowNum, 3).Value = FixKanaAndTrim(csvData(i, 11)) ' 患者カナ氏名
-            ws.Cells(rowNum, 4).Value = FixKanaAndTrim(csvData(i, 34))
+            ws.Cells(rowNum, 2).Value = ws.Cells(1, 2)) ' 薬局名
+            ws.Cells(rowNum, 3).Value = ws.Cells(2, 2)) ' 医療機関コード(薬局)
+            ws.Cells(rowNum, 4).Value = FixKanaAndTrim(csvData(i, 34)) ' 医療機関名
             
             If csvData(i, 65) <> "'（なし） （なし） （なし）'" Then
-                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 65)) 
+                ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 65)) ' 医療機関コード
             Else
                 ws.Cells(rowNum, 5).Value = FixKanaAndTrim(csvData(i, 66))
             End If
             
             ws.Cells(rowNum, 6).Value = FixKanaAndTrim(csvData(i, 51)) ' 生保受給者番号
-            ws.Cells(rowNum, 7).Value = FixKanaAndTrim(csvData(i, 10)) ' 薬局コード
-            ws.Cells(rowNum, 8).Value = FixKanaAndTrim(csvData(i, 11)) ' 診療報酬明細書コード
-            ws.Cells(rowNum, 9).Value = FixKanaAndTrim(csvData(i, 12)) ' 医療機関コード
-            ws.Cells(rowNum, 10).Value = FixKanaAndTrim(csvData(i, 57)) ' 保険者番号
+            ws.Cells(rowNum, 7).Value = FixKanaAndTrim(csvData(i, 10)) ' 患者氏名
+            ws.Cells(rowNum, 8).Value = FixKanaAndTrim(csvData(i, 11)) ' 患者氏名（カナ）
+            ws.Cells(rowNum, 9).Value = FixKanaAndTrim(csvData(i, 12)) 
+            ws.Cells(rowNum, 10).Value = FixKanaAndTrim(csvData(i, 57)) ' 薬局月初回来局日
             
             ' 行番号を進める
             rowNum = rowNum + 1

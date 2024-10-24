@@ -5,6 +5,10 @@ Sub ProcessMultipleCSVFiles()
     Dim folderPath As String
     Dim csvFile As String
     Dim wb As Workbook
+    Dim errorFiles As String ' エラーが発生したファイル名を格納する変数
+    
+    ' エラーファイルリストの初期化
+    errorFiles = ""
     
     ' シート1（転記先のシート）
     Set ws = ThisWorkbook.Sheets(1)
@@ -16,28 +20,65 @@ Sub ProcessMultipleCSVFiles()
     
     Do While csvFile <> ""
         ' CSVファイルを開く
+        On Error Resume Next ' エラーを一時的に無視して次に進む
         Set wb = Workbooks.Open(folderPath & csvFile)
+        If Err.Number <> 0 Then
+            ' ファイルを開けなかった場合、エラーファイルリストに追加
+            errorFiles = errorFiles & vbCrLf & csvFile
+            Err.Clear ' エラーをクリアして次のファイルへ進む
+            csvFile = Dir ' 次のファイルを取得
+            On Error GoTo 0 ' 通常のエラーハンドリングに戻す
+            GoTo ContinueLoop
+        End If
+        On Error GoTo 0 ' 通常のエラーハンドリングに戻す
+        
         Set csvSheet = wb.Sheets(1) ' CSVシートを取得
         
         ' ファイル形式を判定して対応する処理を実行
         If IsBillingConfirmation(csvSheet) Then
+            On Error Resume Next
             ProcessBillingConfirmation csvSheet, ws
+            If Err.Number <> 0 Then
+                ' 処理中にエラーが発生した場合、エラーファイルリストに追加
+                errorFiles = errorFiles & vbCrLf & csvFile
+                Err.Clear ' エラーをクリア
+            End If
+            On Error GoTo 0
         ElseIf IsPaymentDetails(csvFile) Then
+            On Error Resume Next
             ProcessPaymentDetails csvSheet, ws
+            If Err.Number <> 0 Then
+                errorFiles = errorFiles & vbCrLf & csvFile
+                Err.Clear
+            End If
+            On Error GoTo 0
         ElseIf IsDispensingFeeStatement(csvSheet) Then
+            On Error Resume Next
             ProcessDispensingFeeStatement csvSheet, ws
+            If Err.Number <> 0 Then
+                errorFiles = errorFiles & vbCrLf & csvFile
+                Err.Clear
+            End If
+            On Error GoTo 0
         Else
-            MsgBox "不明なCSV形式: " & csvFile, vbExclamation, "エラー"
+            ' ファイル形式が不明な場合もエラーファイルリストに追加
+            errorFiles = errorFiles & vbCrLf & csvFile
         End If
         
         ' CSVファイルを閉じる
         wb.Close False ' 保存せずに閉じる
         
+ContinueLoop:
         ' 次のCSVファイルを取得
         csvFile = Dir
     Loop
     
-    MsgBox "すべてのCSVファイルの処理が完了しました。"
+    ' エラーが発生したファイルがあればメッセージボックスで通知
+    If Len(errorFiles) > 0 Then
+        MsgBox "以下のファイルで処理中にエラーが発生しました:" & vbCrLf & errorFiles, vbExclamation, "エラー一覧"
+    Else
+        MsgBox "すべてのCSVファイルの処理が完了しました。"
+    End If
 End Sub
 
 ' ===== 判定関数 =====

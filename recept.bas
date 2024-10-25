@@ -1,36 +1,48 @@
 Sub ProcessMultipleCSVFiles()
     Dim ws As Worksheet
     Dim csvSheet As Worksheet
-    Dim lastRow As Long
     Dim folderPath As String
     Dim csvFile As String
     Dim wb As Workbook
     Dim errorFiles As String ' エラーが発生したファイル名を格納する変数
+    Dim processedFiles As Collection ' 処理済みファイル名を格納するコレクション
     
     ' エラーファイルリストの初期化
     errorFiles = ""
+    Set processedFiles = New Collection ' 処理済みファイルリストの初期化
     
     ' シート1（転記先のシート）
     Set ws = ThisWorkbook.Sheets(1)
-    
     folderPath = ThisWorkbook.Path & Application.PathSeparator
     
     ' フォルダ内のすべてのCSVファイルを処理
-    csvFile = Dir(folderPath & "*.csv") ' フォルダ内のCSVファイルを取得
+    csvFile = Dir(folderPath & "*.csv")
     
     Do While csvFile <> ""
+        ' すでに処理済みのファイルかを確認
+        On Error Resume Next
+        processedFiles.Add csvFile, csvFile ' ファイル名をキーに追加
+        If Err.Number <> 0 Then
+            ' ファイルが既にリストにある場合はスキップ
+            Err.Clear
+            csvFile = Dir
+            On Error GoTo 0
+            GoTo ContinueLoop
+        End If
+        On Error GoTo 0
+        
         ' CSVファイルを開く
         On Error Resume Next ' エラーを一時的に無視して次に進む
         Set wb = Workbooks.Open(folderPath & csvFile)
         If Err.Number <> 0 Then
             ' ファイルを開けなかった場合、エラーファイルリストに追加
             errorFiles = errorFiles & vbCrLf & csvFile
-            Err.Clear ' エラーをクリアして次のファイルへ進む
-            csvFile = Dir ' 次のファイルを取得
-            On Error GoTo 0 ' 通常のエラーハンドリングに戻す
+            Err.Clear
+            csvFile = Dir
+            On Error GoTo 0
             GoTo ContinueLoop
         End If
-        On Error GoTo 0 ' 通常のエラーハンドリングに戻す
+        On Error GoTo 0
         
         Set csvSheet = wb.Sheets(1) ' CSVシートを取得
         
@@ -41,7 +53,7 @@ Sub ProcessMultipleCSVFiles()
             If Err.Number <> 0 Then
                 ' 処理中にエラーが発生した場合、エラーファイルリストに追加
                 errorFiles = errorFiles & vbCrLf & csvFile
-                Err.Clear ' エラーをクリア
+                Err.Clear
             End If
             On Error GoTo 0
         ElseIf IsPaymentDetails(csvFile) Then
@@ -66,7 +78,7 @@ Sub ProcessMultipleCSVFiles()
         End If
         
         ' CSVファイルを閉じる
-        wb.Close False ' 保存せずに閉じる
+        wb.Close False
         
 ContinueLoop:
         ' 次のCSVファイルを取得
@@ -97,11 +109,11 @@ Function IsDispensingFeeStatement(csvSheet As Worksheet) As Boolean
     IsDispensingFeeStatement = (csvSheet.Cells(1, 1).Value = "H") And (csvSheet.Cells(2, 1).Value = "R2")
 End Function
 
-' ===== 請求確定表の処理 =====
+' ===== 各形式に応じた処理 =====
 Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
     Dim lastRow As Long
     Dim searchMonth As String
-    Dim i As Long, j As Long
+    Dim i As Long
     Dim csvMonth As String
     Dim normalStartCol As Integer
     Dim reClaimStartCol As Integer
@@ -111,8 +123,8 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
     lastRow = csvSheet.Cells(csvSheet.Rows.Count, "A").End(xlUp).Row
     
     ' シート1のA5からA16の各月のラベルを検索
-    For i = 5 To 16 ' A5からA16
-        searchMonth = ws.Cells(i, 1).Value ' A列の各月のラベルを取得
+    For i = 5 To 16
+        searchMonth = ws.Cells(i, 1).Value
         
         found = False ' 初期状態では見つかっていない
         
@@ -124,7 +136,7 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
         ' 一致するか比較
         If csvMonth = searchMonth Then
             ' 一致した場合にデータを転記
-            found = True ' 見つかったことを示す
+            found = True
             
             ' 通常請求分：社保請求データをE列から横方向に転記（縦→横に変換）
             normalStartCol = 5 ' E列
@@ -144,7 +156,6 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
     End If
 End Sub
 
-' ===== 振込額明細書の処理 =====
 Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     Dim i As Long
     Dim paymentAmount As Double
@@ -157,6 +168,9 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     Dim requestPoints As Double
     Dim finalPoints As Double
     Dim difference As Double
+    Dim storeCode As String
+    Dim processDate As String
+    Dim uniqueKey As String
     Dim status As String
     
     ' "返戻管理"シートを取得
@@ -168,21 +182,14 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     ' 支払機関コードを取得（例：7桁目の値を使用）
     paymentAgencyCode = Mid(csvSheet.Name, 7, 1) ' ファイル名から7桁目を取得
     
-    ' 支払機関コードに応じて転記先の列を設定
-    Select Case paymentAgencyCode
-        Case "1"
-            depositColumn = 5 ' 支払機関コードが1の場合、5列目に転記
-        Case "2"
-            depositColumn = 6 ' 支払機関コードが2の場合、6列目に転記
-        Case "3"
-            depositColumn = 8 ' 支払機関コードが3の場合、8列目に転記
-        Case Else
-            MsgBox "不明な支払機関コードです: " & paymentAgencyCode, vbExclamation, "エラー"
-            Exit Sub
-    End Select
-    
     ' 診療年月を取得（例: Cells(1,2)の5桁の値）
     diagnosisDate = csvSheet.Cells(1, 2).Value
+    
+    ' 店番（仮に4桁の店番号を指定）
+    storeCode = "0001" ' 必要に応じて適切な値を取得または設定
+    
+    ' 返戻処理年月（例として現在の年月を5桁で設定）
+    processDate = Format(Date, "yymm") & Format(Date, "MM")
     
     ' 82列目の合計額を計算し、空欄を無視
     totalAmount = 0
@@ -190,16 +197,18 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
         If IsNumeric(csvSheet.Cells(i, 82).Value) Then
             totalAmount = totalAmount + csvSheet.Cells(i, 82).Value
         Else
-            ' 82列目が空欄の場合、返戻管理シートに転記
-            returnManagementSheet.Cells(nextEmptyRow, 1).Value = paymentAgencyCode ' 支払機関
-            returnManagementSheet.Cells(nextEmptyRow, 2).Value = diagnosisDate ' 診療年月
-            returnManagementSheet.Cells(nextEmptyRow, 3).Value = csvSheet.Cells(i, 14).Value ' 患者名
-            returnManagementSheet.Cells(nextEmptyRow, 4).Value = "振込なし" ' 返戻日
-            returnManagementSheet.Cells(nextEmptyRow, 5).Value = csvSheet.Cells(i, 22).Value ' 請求時点数
-            returnManagementSheet.Cells(nextEmptyRow, 6).Value = csvSheet.Cells(i, 23).Value ' 返戻後再請求時点数
-            returnManagementSheet.Cells(nextEmptyRow, 7).Value = 0 ' 振込額（なし）
-            returnManagementSheet.Cells(nextEmptyRow, 8).Value = csvSheet.Cells(i, 22).Value ' 差額（請求時点数）
-            returnManagementSheet.Cells(nextEmptyRow, 9).Value = "返戻" ' 請求状況
+            ' 82列目が空欄の場合、返戻管理シートに転記（種別コード1）
+            uniqueKey = paymentAgencyCode & diagnosisDate & "1" & processDate & storeCode
+            returnManagementSheet.Cells(nextEmptyRow, 1).Value = uniqueKey
+            returnManagementSheet.Cells(nextEmptyRow, 2).Value = paymentAgencyCode
+            returnManagementSheet.Cells(nextEmptyRow, 3).Value = diagnosisDate
+            returnManagementSheet.Cells(nextEmptyRow, 4).Value = csvSheet.Cells(i, 14).Value
+            returnManagementSheet.Cells(nextEmptyRow, 5).Value = "振込なし"
+            returnManagementSheet.Cells(nextEmptyRow, 6).Value = csvSheet.Cells(i, 22).Value
+            returnManagementSheet.Cells(nextEmptyRow, 7).Value = csvSheet.Cells(i, 23).Value
+            returnManagementSheet.Cells(nextEmptyRow, 8).Value = 0
+            returnManagementSheet.Cells(nextEmptyRow, 9).Value = csvSheet.Cells(i, 22).Value
+            returnManagementSheet.Cells(nextEmptyRow, 10).Value = "返戻"
             nextEmptyRow = nextEmptyRow + 1
         End If
         
@@ -210,16 +219,21 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
             difference = requestPoints - finalPoints
             
             If difference <> 0 Then
-                ' 差異がある場合、返戻管理シートに転記
-                returnManagementSheet.Cells(nextEmptyRow, 1).Value = paymentAgencyCode ' 支払機関
-                returnManagementSheet.Cells(nextEmptyRow, 2).Value = diagnosisDate ' 診療年月
-                returnManagementSheet.Cells(nextEmptyRow, 3).Value = csvSheet.Cells(i, 14).Value ' 患者名
-                returnManagementSheet.Cells(nextEmptyRow, 4).Value = Now ' 返戻日
-                returnManagementSheet.Cells(nextEmptyRow, 5).Value = requestPoints ' 請求時点数
-                returnManagementSheet.Cells(nextEmptyRow, 6).Value = finalPoints ' 返戻後再請求時点数
-                returnManagementSheet.Cells(nextEmptyRow, 7).Value = csvSheet.Cells(i, 82).Value ' 振込額
-                returnManagementSheet.Cells(nextEmptyRow, 8).Value = difference ' 請求振込差額
-                returnManagementSheet.Cells(nextEmptyRow, 9).Value = "差異あり" ' 請求状況
+                If difference > 0 Then
+                    uniqueKey = paymentAgencyCode & diagnosisDate & "2" & processDate & storeCode ' 加点の場合
+                Else
+                    uniqueKey = paymentAgencyCode & diagnosisDate & "3" & processDate & storeCode ' 減点の場合
+                End If
+                returnManagementSheet.Cells(nextEmptyRow, 1).Value = uniqueKey
+                returnManagementSheet.Cells(nextEmptyRow, 2).Value = paymentAgencyCode
+                returnManagementSheet.Cells(nextEmptyRow, 3).Value = diagnosisDate
+                returnManagementSheet.Cells(nextEmptyRow, 4).Value = csvSheet.Cells(i, 14).Value
+                returnManagementSheet.Cells(nextEmptyRow, 5).Value = Now
+                returnManagementSheet.Cells(nextEmptyRow, 6).Value = requestPoints
+                returnManagementSheet.Cells(nextEmptyRow, 7).Value = finalPoints
+                returnManagementSheet.Cells(nextEmptyRow, 8).Value = csvSheet.Cells(i, 82).Value
+                returnManagementSheet.Cells(nextEmptyRow, 9).Value = difference
+                returnManagementSheet.Cells(nextEmptyRow, 10).Value = "差異あり"
                 nextEmptyRow = nextEmptyRow + 1
             End If
         End If
@@ -229,37 +243,30 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     ws.Cells(15, depositColumn).Value = totalAmount
 End Sub
 
-' ===== 調剤報酬明細書の処理 =====
 Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
     Dim referenceAmount As Double
     Dim searchMonth As String
-    Dim i As Long, j As Long
+    Dim i As Long
     Dim csvMonth As String
     Dim found As Boolean
     
     ' シート1のA5からA16の各月のラベルを検索
-    For i = 5 To 16 ' A5からA16
-        searchMonth = ws.Cells(i, 1).Value ' A列の各月のラベルを取得
+    For i = 5 To 16
+        searchMonth = ws.Cells(i, 1).Value
         
-        found = False ' 初期状態では見つかっていない
+        found = False
         
         ' CSVシートの該当するデータを検索
-        csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "") ' 'を削除
-        csvMonth = ConvertZenkakuToHankaku(csvMonth) ' 全角数字を半角に変換
-        csvMonth = Format(Format(csvMonth, "@@@@/@@/@@"), "ggge年m月処理分") ' 令和◯年◯月処理分
+        csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "")
+        csvMonth = ConvertZenkakuToHankaku(csvMonth)
+        csvMonth = Format(Format(csvMonth, "@@@@/@@/@@"), "ggge年m月処理分")
         
         ' 一致するか比較
         If csvMonth = searchMonth Then
-            ' 一致した場合にデータを転記
-            found = True ' 見つかったことを示す
-            
-            ' 調剤報酬明細書は1行目の33列目の振込参考金額を取得
+            found = True
             referenceAmount = csvSheet.Cells(1, 33).Value
-            
-            ' 振込参考金額をシート1の指定されたセルに転記（例: B25に転記する）
             ws.Cells(i, 2).Value = referenceAmount
-            
-            Exit For ' データを転記したらループを抜ける
+            Exit For
         End If
     Next i
     
@@ -269,7 +276,6 @@ Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
     End If
 End Sub
 
-' ===== 全角数字を半角数字に変換する関数 =====
 Function ConvertZenkakuToHankaku(inputStr As String) As String
     Dim i As Integer
     Dim result As String
@@ -290,7 +296,7 @@ Function ConvertZenkakuToHankaku(inputStr As String) As String
             Case "７": result = result & "7"
             Case "８": result = result & "8"
             Case "９": result = result & "9"
-            Case Else: result = result & currentChar ' 全角数字以外はそのまま
+            Case Else: result = result & currentChar
         End Select
     Next i
     

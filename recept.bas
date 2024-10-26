@@ -6,18 +6,18 @@ Sub ProcessMultipleCSVFiles()
     Dim wb As Workbook
     Dim errorFiles As String ' エラーが発生したファイル名を格納する変数
     Dim processedFiles As Collection ' 処理済みファイル名を格納するコレクション
-    
+
     ' エラーファイルリストの初期化
     errorFiles = ""
     Set processedFiles = New Collection ' 処理済みファイルリストの初期化
-    
+
     ' シート1（転記先のシート）
     Set ws = ThisWorkbook.Sheets(1)
     folderPath = ThisWorkbook.Path & Application.PathSeparator
-    
+
     ' フォルダ内のすべてのCSVファイルを処理
     csvFile = Dir(folderPath & "*.csv")
-    
+
     Do While csvFile <> ""
         ' すでに処理済みのファイルかを確認
         On Error Resume Next
@@ -30,7 +30,7 @@ Sub ProcessMultipleCSVFiles()
             GoTo ContinueLoop
         End If
         On Error GoTo 0
-        
+
         ' CSVファイルを開く
         On Error Resume Next ' エラーを一時的に無視して次に進む
         Set wb = Workbooks.Open(folderPath & csvFile)
@@ -43,9 +43,9 @@ Sub ProcessMultipleCSVFiles()
             GoTo ContinueLoop
         End If
         On Error GoTo 0
-        
+
         Set csvSheet = wb.Sheets(1) ' CSVシートを取得
-        
+
         ' ファイル形式を判定して対応する処理を実行
         If IsBillingConfirmation(csvSheet) Then
             On Error Resume Next
@@ -76,15 +76,15 @@ Sub ProcessMultipleCSVFiles()
             ' ファイル形式が不明な場合もエラーファイルリストに追加
             errorFiles = errorFiles & vbCrLf & csvFile
         End If
-        
+
         ' CSVファイルを閉じる
         wb.Close False
-        
+
 ContinueLoop:
         ' 次のCSVファイルを取得
         csvFile = Dir
     Loop
-    
+
     ' エラーが発生したファイルがあればメッセージボックスで通知
     If Len(errorFiles) > 0 Then
         MsgBox "以下のファイルで処理中にエラーが発生しました:" & vbCrLf & errorFiles, vbExclamation, "エラー一覧"
@@ -118,38 +118,38 @@ Sub ProcessBillingConfirmation(csvSheet As Worksheet, ws As Worksheet)
     Dim normalStartCol As Integer
     Dim reClaimStartCol As Integer
     Dim found As Boolean
-    
+
     ' CSVシートの最終行を取得
     lastRow = csvSheet.Cells(csvSheet.Rows.Count, "A").End(xlUp).Row
-    
+
     ' シート1のA5からA16の各月のラベルを検索
     For i = 5 To 16
         searchMonth = ws.Cells(i, 1).Value
-        
+
         found = False ' 初期状態では見つかっていない
-        
+
         ' CSVシートの該当するデータを検索
         csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "") ' 'を削除
         csvMonth = Replace(csvMonth, " ", "") ' 半角スペースを削除
         csvMonth = ConvertZenkakuToHankaku(csvMonth) ' 全角数字を半角に変換
-        
+
         ' 一致するか比較
         If csvMonth = searchMonth Then
             ' 一致した場合にデータを転記
             found = True
-            
+
             ' 通常請求分：社保請求データをE列から横方向に転記（縦→横に変換）
             normalStartCol = 5 ' E列
             ws.Cells(i, normalStartCol).Resize(1, 7).Value = WorksheetFunction.Transpose(csvSheet.Cells(3, 11).Resize(7, 1).Value)
-            
+
             ' 再請求分：O列から横方向に転記（縦→横に変換）
             reClaimStartCol = 15 ' O列
             ws.Cells(i, reClaimStartCol).Resize(1, 7).Value = WorksheetFunction.Transpose(csvSheet.Cells(12, 11).Resize(7, 1).Value)
-            
+
             Exit For ' データを転記したらループを抜ける
         End If
     Next i
-    
+
     ' 該当する月が見つからなかった場合のエラーメッセージ
     If Not found Then
         MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
@@ -172,25 +172,25 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     Dim processDate As String
     Dim uniqueKey As String
     Dim status As String
-    
+
     ' "返戻管理"シートを取得
     Set returnManagementSheet = ThisWorkbook.Sheets("返戻管理")
-    
+
     ' 次にデータを転記する行を取得（返戻管理シートの最終行+1）
     nextEmptyRow = returnManagementSheet.Cells(returnManagementSheet.Rows.Count, "A").End(xlUp).Row + 1
-    
+
     ' 支払機関コードを取得（例：7桁目の値を使用）
     paymentAgencyCode = Mid(csvSheet.Name, 7, 1) ' ファイル名から7桁目を取得
-    
+
     ' 診療年月を取得（例: Cells(1,2)の5桁の値）
     diagnosisDate = csvSheet.Cells(1, 2).Value
-    
+
     ' 店番（仮に4桁の店番号を指定）
     storeCode = "0001" ' 必要に応じて適切な値を取得または設定
-    
+
     ' 返戻処理年月（例として現在の年月を5桁で設定）
     processDate = Format(Date, "yymm") & Format(Date, "MM")
-    
+
     ' 82列目の合計額を計算し、空欄を無視
     totalAmount = 0
     For i = 3 To csvSheet.Cells(csvSheet.Rows.Count, "A").End(xlUp).Row
@@ -211,13 +211,13 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
             returnManagementSheet.Cells(nextEmptyRow, 10).Value = "返戻"
             nextEmptyRow = nextEmptyRow + 1
         End If
-        
+
         ' 22列目と23列目の差異をチェック
         If IsNumeric(csvSheet.Cells(i, 22).Value) And IsNumeric(csvSheet.Cells(i, 23).Value) Then
             requestPoints = csvSheet.Cells(i, 22).Value
             finalPoints = csvSheet.Cells(i, 23).Value
             difference = requestPoints - finalPoints
-            
+
             If difference <> 0 Then
                 If difference > 0 Then
                     uniqueKey = paymentAgencyCode & diagnosisDate & "2" & processDate & storeCode ' 加点の場合
@@ -238,7 +238,7 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
             End If
         End If
     Next i
-    
+
     ' 合計額を指定されたセルに転記
     ws.Cells(15, depositColumn).Value = totalAmount
 End Sub
@@ -249,18 +249,18 @@ Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
     Dim i As Long
     Dim csvMonth As String
     Dim found As Boolean
-    
+
     ' シート1のA5からA16の各月のラベルを検索
     For i = 5 To 16
         searchMonth = ws.Cells(i, 1).Value
-        
+
         found = False
-        
+
         ' CSVシートの該当するデータを検索
         csvMonth = Replace(csvSheet.Cells(1, 5).Value, "'", "")
         csvMonth = ConvertZenkakuToHankaku(csvMonth)
         csvMonth = Format(Format(csvMonth, "@@@@/@@/@@"), "ggge年m月処理分")
-        
+
         ' 一致するか比較
         If csvMonth = searchMonth Then
             found = True
@@ -269,7 +269,7 @@ Sub ProcessDispensingFeeStatement(csvSheet As Worksheet, ws As Worksheet)
             Exit For
         End If
     Next i
-    
+
     ' 該当する月が見つからなかった場合のエラーメッセージ
     If Not found Then
         MsgBox "対象年月日が見つかりません: " & csvMonth, vbExclamation, "エラー"
@@ -281,7 +281,7 @@ Function ConvertZenkakuToHankaku(inputStr As String) As String
     Dim result As String
     Dim currentChar As String
     result = ""
-    
+
     ' 全角の数字を半角に変換
     For i = 1 To Len(inputStr)
         currentChar = Mid(inputStr, i, 1)
@@ -299,6 +299,7 @@ Function ConvertZenkakuToHankaku(inputStr As String) As String
             Case Else: result = result & currentChar
         End Select
     Next i
-    
+
     ConvertZenkakuToHankaku = result
 End Function
+

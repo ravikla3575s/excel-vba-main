@@ -108,3 +108,41 @@ Sub ExportToCSV(ws As Worksheet)
     
     MsgBox "CSVファイルが保存されました: " & fullFileName
 End Sub
+Sub ImportSelectedCSVToSheet2()
+    Dim ws As Worksheet
+    Dim csvFilePath As String
+    Dim csvData As Variant
+    Dim i As Long, j As Long
+    
+    ' シート2を指定
+    Set ws = ThisWorkbook.Worksheets("Sheet2")
+    
+    ' ファイル選択ダイアログを表示してCSVファイルを選択
+    csvFilePath = Application.GetOpenFilename("CSVファイル (*.csv), *.csv", , "インポートするCSVファイルを選択してください")
+    
+    ' ユーザーがキャンセルした場合は終了
+    If csvFilePath = "False" Then
+        MsgBox "操作がキャンセルされました。"
+        Exit Sub
+    End If
+    
+    ' シート2の内容を削除
+    ws.Cells.ClearContents
+    
+    ' CSVファイルを開いてデータを読み込み
+    Open csvFilePath For Input As #1
+    i = 1
+    Do Until EOF(1)
+        Line Input #1, csvData
+        csvData = Split(csvData, ",")
+        
+        ' シート2にデータを書き込む
+        For j = LBound(csvData) To UBound(csvData)
+            ws.Cells(i, j + 1).Value = csvData(j)
+        Next j
+        i = i + 1
+    Loop
+    Close #1
+    
+    MsgBox "CSVデータがシート2に転記されました。"
+End Sub

@@ -186,10 +186,10 @@ Sub ProcessPaymentDetails(csvSheet As Worksheet, ws As Worksheet)
     diagnosisDate = csvSheet.Cells(1, 2).Value
 
     ' 店番（仮に4桁の店番号を指定）
-    storeCode = "0001" ' 必要に応じて適切な値を取得または設定
+    storeCode = ThisWorkbook.Worksheets(1).Cells(3,2) ' 必要に応じて適切な値を取得または設定
 
-    ' 返戻処理年月（例として現在の年月を5桁で設定）
-    processDate = Format(Date, "yymm") & Format(Date, "MM")
+    ' 返戻処理年月
+    processDate = 5 & Format(Date, "yymm")
 
     ' 82列目の合計額を計算し、空欄を無視
     totalAmount = 0

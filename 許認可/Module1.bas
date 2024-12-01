@@ -555,32 +555,52 @@ Sub FindMatchingStrings()
     Dim cell As Range
     Dim targetStr As String
     Dim ws As Worksheet
-    Dim resultWs As Worksheet
+    Dim searchWs As Worksheet
     Dim resultRow As Integer
-
-    Set ws = ThisWorkbook.Sheets("検索") ' シート名を適切に設定してください
+    Dim foundMatch As Boolean
     
+    ' ワークシートの参照を設定
+    Set ws = ThisWorkbook.Sheets("検索")
+    Set searchWs = ThisWorkbook.Sheets("届出一覧テーブル")
+    
+    ' 結果出力範囲をクリア
     ws.Range("L2:L30").Clear
-    ' 検索したい文字列を定義します
-    targetStr = ws.Cells(16, 2)
-
-    ' 検索対象の範囲を設定します
-    Set rng = Sheets("届出一覧テーブル").Range("CU2:GX70")  ' B2:B100 を検索対象の範囲に置き換えてください
-
-    resultRow = 2 ' 結果を出力する開始行（ここではSheet2の1行目から開始）
-    ' 各セルをループで調べます
-    For Each cell In rng
-
-    If cell.value = targetStr Then
-        ' マッチする文字列が見つかったら対応するA列のセルの値を出力します
-        ws.Cells(resultRow, 12).value = Sheets("届出一覧テーブル").Range("B" & cell.Row).value
-        resultRow = resultRow + 1 ' 結果出力行を次に進めます
+    
+    ' 検索文字列を設定（B16セルの値）
+    targetStr = Trim(CStr(ws.Cells(16, 2).value)) ' 文字列として扱う
+    
+    ' 検索文字列が空白の場合はエラー表示
+    If targetStr = "" Then
+        MsgBox "検索文字列が空白です。", vbExclamation, "エラー"
+        Exit Sub
     End If
-
+    
+    ' 検索対象範囲を設定
+    Set rng = searchWs.Range("CU2:GX70")
+    
+    ' 結果出力の開始行
+    resultRow = 2
+    foundMatch = False ' マッチフラグを初期化
+    
+    ' 検索処理
+    For Each cell In rng
+        ' セルがエラーの場合はスキップ
+        If Not IsError(cell.value) Then
+            ' 一致チェック（型を合わせて比較）
+            If Trim(CStr(cell.value)) = targetStr Then
+                ' 一致する場合、結果をL列に出力
+                ws.Cells(resultRow, 12).value = searchWs.Cells(cell.Row, 2).value
+                resultRow = resultRow + 1 ' 次の行に進む
+                foundMatch = True ' マッチフラグをTrueに
+            End If
+        End If
     Next cell
-
+    
+    ' 検索結果がない場合の処理
+    If Not foundMatch Then
+        MsgBox "一致するデータが見つかりませんでした。", vbInformation, "検索結果"
+    End If
 End Sub
-
 Sub 薬剤師変更マクロ()
     Dim strName As String, PharmacistName As String, apdateItem As String
     Dim updateRow As Integer, updateColumn As Integer

@@ -50,10 +50,22 @@ Sub SetupTemplate()
     ' ドキュメントフォルダ内のOfficeカスタムテンプレートフォルダを取得
     templatePath = folderPath & "\tyouzai_excel_2.xltx"
     
-    ' フォルダが存在しない場合は作成
-    If Dir(saveFolder, vbDirectory) = "" Then
-        MkDir saveFolder
-    End If
+    ' フォルダ選択ダイアログを開く
+    Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+
+    With fDialog
+        .Title = "請求ファイルを保存するフォルダを選択してください"
+        .AllowMultiSelect = False ' 複数選択を無効化
+        
+        ' ユーザーがフォルダを選択した場合
+        If .Show = -1 Then
+            saveFolder = .SelectedItems(1) ' 選択したフォルダのパスを取得
+            MsgBox "選択されたフォルダ: " & saveFolder, vbInformation
+        Else
+            MsgBox "フォルダが選択されませんでした。処理を中止します。", vbExclamation
+            Exit Sub
+        End If
+    End With
     
     ' テンプレートとして保存
     newWb.SaveAs FileName:=templatePath, FileFormat:=xlOpenXMLTemplate

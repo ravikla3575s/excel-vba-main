@@ -5,7 +5,10 @@ Sub SetupTemplate()
     Dim saveFolder As String
     Dim fDialog As FileDialog
     Dim callingWs As Worksheet
-    
+    Dim fDialog As FileDialog
+    Dim folderPath As String
+
+
     ' 呼び出し元のシートを設定
     Set callingWs = ThisWorkbook.Sheets(1)
     
@@ -20,15 +23,32 @@ Sub SetupTemplate()
 
     ' 作成直後のシートを削除して空にする
     Application.DisplayAlerts = False
-    newWb.Sheets(1).Delete
-    Application.DisplayAlerts = True
     
     ' シート2をコピー
     ThisWorkbook.Sheets(2).Copy Before:=newWb.Sheets(1)
     
+    newWb.Sheets(2).Delete
+    Application.DisplayAlerts = True
+    
+    ' フォルダ選択ダイアログを開く
+    Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
+
+    With fDialog
+        .Title = "テンプレートを保存するフォルダを選択してください"
+        .AllowMultiSelect = False ' 複数選択を無効化
+        
+        ' ユーザーがフォルダを選択した場合
+        If .Show = -1 Then
+            folderPath = .SelectedItems(1) ' 選択したフォルダのパスを取得
+            MsgBox "選択されたフォルダ: " & folderPath, vbInformation
+        Else
+            MsgBox "フォルダが選択されませんでした。処理を中止します。", vbExclamation
+            Exit Sub
+        End If
+    End With
+    
     ' ドキュメントフォルダ内のOfficeカスタムテンプレートフォルダを取得
-    saveFolder = Environ("USERPROFILE") & "\Documents\Custom Office Templates"
-    templatePath = saveFolder & "\tyouzai_excel_2.xltx"
+    templatePath = folderPath & "\tyouzai_excel_2.xltx"
     
     ' フォルダが存在しない場合は作成
     If Dir(saveFolder, vbDirectory) = "" Then
@@ -36,7 +56,7 @@ Sub SetupTemplate()
     End If
     
     ' テンプレートとして保存
-    newWb.SaveAs Filename:=templatePath, FileFormat:=xlOpenXMLTemplate
+    newWb.SaveAs FileName:=templatePath, FileFormat:=xlOpenXMLTemplate
     newWb.Close False
     
     ' 呼び出し元エクセルに保存したファイルのパスを記録
@@ -149,7 +169,7 @@ SkipRow:
     savePath = saveFolder & "\" & saveFileName
     
     ' 編集後のファイルを保存
-    newWb.SaveAs Filename:=savePath, FileFormat:=xlOpenXMLWorkbook
+    newWb.SaveAs FileName:=savePath, FileFormat:=xlOpenXMLWorkbook
     newWb.Close False
     
     ' 完了メッセージ
@@ -158,7 +178,7 @@ End Sub
 
 Function FixKana(inputStr As String) As String
     Dim result As String
-    result = Application.WorksheetFunction.Substitute(inputStr, "'","") ' シングルクォートを削除
+    result = Application.WorksheetFunction.Substitute(inputStr, "'", "") ' シングルクォートを削除
     result = Application.WorksheetFunction.Substitute(result, "(", "/")
     result = Application.WorksheetFunction.Substitute(result, ")", "")
     result = StrConv(result, vbWide) ' 半角カナを全角に変換
@@ -176,3 +196,4 @@ Function RemoveLeading01(code As String) As String
         RemoveLeading01 = code
     End If
 End Function
+

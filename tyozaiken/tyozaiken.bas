@@ -6,8 +6,7 @@ Sub SetupTemplate()
     Dim fDialog As FileDialog
     Dim callingWs As Worksheet
     Dim fDialog As FileDialog
-    Dim folderPath As String
-
+    Dim folderPath As String,templatePath as String
 
     ' 呼び出し元のシートを設定
     Set callingWs = ThisWorkbook.Sheets(1)
@@ -28,11 +27,10 @@ Sub SetupTemplate()
     ThisWorkbook.Sheets(2).Copy Before:=newWb.Sheets(1)
     
     newWb.Sheets(2).Delete
-    Application.DisplayAlerts = True
     
     ' フォルダ選択ダイアログを開く
     Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
-
+    
     With fDialog
         .Title = "テンプレートを保存するフォルダを選択してください"
         .AllowMultiSelect = False ' 複数選択を無効化
@@ -47,9 +45,17 @@ Sub SetupTemplate()
         End If
     End With
     
+    Application.DisplayAlerts = True
+
     ' ドキュメントフォルダ内のOfficeカスタムテンプレートフォルダを取得
-    templatePath = folderPath & "\tyouzai_excel_2.xltx"
+    templatePath = folderPath & "\tyouzai_excel_v2.xltx"
     
+    newWb.SaveAs Filename:=templatePath, FileFormat:=xlOpenXMLTemplate
+    newWb.Close False
+
+    ' 完了メッセージ
+    MsgBox "データの転記とテンプレート保存が完了しました。保存場所: " & templatePath, vbInformation
+
     ' フォルダ選択ダイアログを開く
     Set fDialog = Application.FileDialog(msoFileDialogFolderPicker)
 

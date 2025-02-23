@@ -243,11 +243,11 @@ Function GetColumnMapping(fileType As String) As Object
 
         ' 各種合計点数
         colMap.Add 13, "総合計点数"
-        colMap.Add 17, "社保合計点数"
-        colMap.Add 20, "公費1_合計点数"
-        colMap.Add 23, "公費2_合計点数"
-        colMap.Add 26, "公費3_合計点数"
-        colMap.Add 29, "公費4_合計点数"
+        colMap.Add 17, "医療保険＿療養の給付＿請求点数"
+        colMap.Add 20, "第一公費_請求点数"
+        colMap.Add 23, "第二公費_請求点数"
+        colMap.Add 26, "第三公費_請求点数"
+        colMap.Add 29, "第四公費_請求点数"
 
         colMap.Add 30, "請求確定状況"
     End If

@@ -237,7 +237,7 @@ Function GetColumnMapping(fileType As String) As Object
         colMap.Add 82, "算定額合計"
 
     ElseIf fileType = "請求確定状況" Then
-        colMap.Add 4, "診療年月"
+        colMap.Add 4, "診療（調剤）年月"
         colMap.Add 5, "氏名"
         colMap.Add 9, "医療機関名称"
 

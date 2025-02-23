@@ -1,4 +1,4 @@
-Sub TransferBillingDetails(newBook As Workbook)
+Sub TransferBillingDetails(newBook As Workbook, sheetName As String)
     Dim wsBilling As Worksheet, wsDetails As Worksheet
     Dim lastRowBilling As Long, lastRowDetails As Long
     Dim i As Long, j As Long
@@ -19,7 +19,7 @@ Sub TransferBillingDetails(newBook As Workbook)
     lastRowDetails = wsDetails.Cells(Rows.Count, "D").End(xlUp).Row
 
     ' CSVデータの請求先分類
-    payerCode = Trim(wsBilling.Cells(2, 3).Value) ' 空白除去
+    payerCode = Mid(sheetName, 7, 1) ' 空白除去
     Select Case payerCode
         Case "1": payerType = "社保"
         Case "2": payerType = "国保"
@@ -214,3 +214,21 @@ Sub ProcessRebillSelection()
 
     MsgBox "転記が完了しました！", vbInformation, "処理完了"
 End Sub
+
+Function ConvertToWesternDate(dispensingMonth As String) As String
+    Dim era As String, yearPart As Integer, westernYear As Integer, monthPart As String
+    
+    ' GYYMM 形式から元号と年月を取得
+    era = Left(dispensingMonth, 1) ' 例: "5"（令和）
+    yearPart = Mid(dispensingMonth, 2, 2) ' 例: "06"
+    monthPart = Right(dispensingMonth, 2) ' 例: "06"
+
+    ' 和暦を西暦に変換
+    Select Case era
+        Case "5": westernYear = 2018 + yearPart ' 令和（2019年開始）
+        ' 他の元号（明治/大正/昭和/平成）は未対応
+    End Select
+
+    ' 変換結果（YY.MM）
+    ConvertToWesternDate = Right(westernYear, 2) & "." & monthPart
+End Function

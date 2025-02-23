@@ -1,7 +1,6 @@
 Function CreateRebillSelectionForm(listData As Object) As Object
     Dim uf As Object
     Dim listBox As Object
-    Dim chkBox As Object
     Dim btnOK As Object
     Dim i As Long
     Dim rowData As Variant
@@ -12,13 +11,13 @@ Function CreateRebillSelectionForm(listData As Object) As Object
     uf.Width = 400
     uf.Height = 500
 
-    ' ListBox を追加
+    ' ListBox を追加（複数選択可能）
     Set listBox = uf.Controls.Add("Forms.ListBox.1", "listBox", True)
     listBox.Left = 20
     listBox.Top = 20
     listBox.Width = 350
     listBox.Height = 350
-    listBox.MultiSelect = 1
+    listBox.MultiSelect = 1 ' 複数選択可能
 
     ' リストデータ追加
     For i = 0 To listData.Count - 1
@@ -34,7 +33,7 @@ Function CreateRebillSelectionForm(listData As Object) As Object
     btnOK.Width = 100
     btnOK.Height = 30
 
-    ' OKボタンの処理
+    ' ボタンが押された時のイベント処理
     btnOK.OnAction = "ProcessRebillSelection"
 
     ' UserForm を返す

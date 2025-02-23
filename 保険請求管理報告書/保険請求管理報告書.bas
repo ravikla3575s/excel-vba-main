@@ -85,7 +85,7 @@ Sub ProcessCSV()
     Set wsTemplate = newBook.Sheets("A")
     Set wsTemplate2 = newBook.Sheets("B")
 
-    wsTemplate.name = "R" & receiptYear & "." & receiptMonth
+    wsTemplate.name = "R" & receiptYear-2018 & "." & receiptMonth
     wsTemplate2.name = ConvertToCircledNumber(receiptMonth)
 
     ' G2, H2, I2 に情報を転記
@@ -108,7 +108,7 @@ Sub ProcessCSV()
         ' CSVデータ転記
         ImportCSVData csvFile, wsSheet, fileType
         ' **追加処理: シート2へ請求詳細データを転記**
-        TransferBillingDetails newBook
+        TransferBillingDetails(newBook, sheetName)   ' 別マクロで処理
     Else
         MsgBox "このCSVデータは既に転記済みです。", vbInformation
     End If
